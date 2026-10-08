@@ -69,17 +69,19 @@ const AdminDashboard = ({ user, onLogout }) => {
       const response = await axios.post(`${API}/admin/send-shipment-email`, {
         order_id: emailForm.order_id,
         estimated_price: parseFloat(emailForm.estimated_price)
-      }, { headers });
+      }, { headers, timeout: 35000 });
       if (response.data.status !== "success") {
         const otpMessage = response.data.otp ? ` OTP for manual sharing: ${response.data.otp}` : "";
         toast.error(`${response.data.message || "Email could not be sent."}${otpMessage}`);
         return;
       }
-      toast.success(`Gmail accepted the email for ${response.data.customer_email || "the customer"}. Check Spam/Promotions if it is missing.`);
+      toast.success(`Email provider accepted the message for ${response.data.customer_email || "the customer"}. Check Spam/Promotions if it is missing.`);
       setEmailForm({ order_id: "", estimated_price: "" });
       fetchOrders();
     } catch (error) {
-      const message = error.response?.status === 403
+      const message = error.code === "ECONNABORTED"
+        ? "Email request timed out. Check the order before retrying to avoid duplicate emails."
+        : error.response?.status === 403
         ? "This tab is not authenticated as an admin. Log out and sign in to the admin account again."
         : error.response?.data?.detail || "Failed to send email";
       toast.error(message);
